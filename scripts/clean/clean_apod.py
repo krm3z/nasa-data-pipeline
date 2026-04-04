@@ -11,7 +11,7 @@ def transform_apod():
             "date" : entry.get("date"),
             "title": entry.get("title"),
             "media_type": entry.get("media_type"),
-            "url": entry.get("url"),
+            "url": entry.get("url") or entry.get("hdurl", ""),
             "copyright":   entry.get("copyright") or "nasa"
         }
         donnees_transform.append(par)
