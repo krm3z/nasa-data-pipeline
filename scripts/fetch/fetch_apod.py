@@ -1,5 +1,6 @@
 import requests
 import time
+import json
 from datetime import datetime
 from config.config import START_YEAR, END_YEAR, NASA_API_KEY, APOD_URL
 
@@ -35,6 +36,10 @@ def fetch_apod(START_YEAR, END_YEAR):
             print(f"Erreur pour {year} : {response.status_code}")
 
         time.sleep(0.5)
+
+    with open("data/raw/apod_raw.json", "w") as f:
+        json.dump(toutes_les_donnees, f)
+    print("Données sauvegardées dans data/raw/apod_raw.json")
 
     return toutes_les_donnees
 
