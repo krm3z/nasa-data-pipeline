@@ -1,20 +1,23 @@
-Voilà le README complet mis à jour :
-
-```markdown
 # 🚀 NASA Data Pipeline
 
 > Pipeline ETL qui collecte, transforme et stocke les données ouvertes de la NASA dans une base SQLite.
 
 ## 🌌 Problématique
+Comment la NASA surveille-t-elle les menaces et phénomènes du système solaire proche de la Terre — objets géocroiseurs et activité solaire — et comment ces données évoluent-elles dans le temps ?
 
-Comment les données ouvertes de la NASA permettent-elles de retracer l'évolution de l'exploration spatiale moderne ?
+Sous-questions couvertes par le pipeline :
+- Comment le nombre et la dangerosité des objets géocroiseurs détectés évoluent-ils par année ? (NeoWs)
+- Quelle est la fréquence et la vitesse des éjections de masse coronale, et comment se situent-elles par rapport aux cycles solaires ? (DONKI)
+- Quel usage la NASA fait-elle de l'imagerie astronomique quotidienne à des fins de vulgarisation ? (APOD)
+
 
 ## 📡 Sources de données
 
 | Source | Description | Statut |
 |--------|-------------|--------|
 | APOD | Astronomy Picture of the Day | ✅ Disponible |
-| NeoWs | Objets proches de la Terre | 🚧 En cours |
+| NeoWs | Objets proches de la Terre | ✅ Disponible |
+| DONKI | Analyses d'éjections de masse coronale (CME) | ✅ Disponible |
 | Mars Rover | Photos des rovers | 🚧 En cours |
 | Meteorites | Données de météorites | 🚧 En cours |
 
@@ -62,6 +65,18 @@ python -m scripts.clean.clean_apod
 python -m scripts.load.load_apod
 ```
 
+## 📊 Analyser les données
+
+Une fois le pipeline exécuté, les scripts du dossier `scripts/analyze/` répondent aux sous-questions de la problématique en agrégeant directement la base SQLite. Ils sont indépendants du pipeline ETL (non appelés par `main.py`) et s'exécutent à la demande :
+
+```bash
+python -m scripts.analyze.analyze_neow    # évolution du nombre/dangerosité des géocroiseurs par année
+python -m scripts.analyze.analyze_donki   # fréquence et vitesse des CME par année
+python -m scripts.analyze.analyze_apod    # usage de l'imagerie APOD par année
+```
+
+Chaque script affiche un résumé en console et sauvegarde le détail dans `data/analysis/*.json`.
+
 ## 📁 Structure du projet
 
 ```
@@ -70,12 +85,14 @@ nasa-data-pipeline/
 │   └── config.py         ← paramètres centralisés
 ├── data/
 │   ├── raw/              ← données brutes API
-│   └── processed/        ← données nettoyées
+│   ├── processed/        ← données nettoyées
+│   └── analysis/         ← résumés d'analyse
 ├── scripts/
 │   ├── fetch/            ← extraction API
 │   ├── clean/            ← transformation
-│   └── load/             ← chargement SQLite
-├── main.py               ← lance tout le pipeline
+│   ├── load/              ← chargement SQLite
+│   └── analyze/           ← analyse (répond à la problématique, séparé de l'ETL)
+├── main.py               ← lance le pipeline ETL (fetch → clean → load)
 ├── .env.example          ← template clé API
 ├── requirements.txt
 └── README.md
@@ -87,4 +104,3 @@ nasa-data-pipeline/
 - **SQLite** — base de données locale
 - **requests** — appels API
 - **python-dotenv** — gestion des secrets
-```
