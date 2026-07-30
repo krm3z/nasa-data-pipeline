@@ -14,5 +14,7 @@ DONKI_START_YEAR = 2010
 APOD_URL = "https://api.nasa.gov/planetary/apod"
 NEOWS_URL = "https://api.nasa.gov/neo/rest/v1/feed"
 DONKI_URL = "https://api.nasa.gov/DONKI/CMEAnalysis"
+MARS_URL = "https://api.nasa.gov/mars-photos/api/v1/manifests"
+ROVERS = ["curiosity", "opportunity", "spirit", "perseverance"]
 
 DB_PATH = "data/nasa.db"

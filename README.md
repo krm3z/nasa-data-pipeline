@@ -10,6 +10,11 @@ Sous-questions couvertes par le pipeline :
 - Quelle est la fréquence et la vitesse des éjections de masse coronale, et comment se situent-elles par rapport aux cycles solaires ? (DONKI)
 - Quel usage la NASA fait-elle de l'imagerie astronomique quotidienne à des fins de vulgarisation ? (APOD)
 
+### 🛰️ Problématique complémentaire — exploration spatiale
+
+Comment l'exploration robotique de Mars par la NASA a-t-elle évolué au fil des missions (durée, portée, volume de données produites) ?
+
+> Il n'existe pas d'API NASA officielle structurée pour l'historique des vols habités (Apollo, Navette, ISS...) — seule l'exploration robotique (rovers martiens) est documentée par une API officielle (`Mars Rover Photos`). Cette problématique est donc volontairement recentrée sur ce périmètre, et traitée par un **pipeline séparé** (`main_mars.py`, voir plus bas) plutôt que fusionnée avec le pipeline de surveillance ci-dessus.
 
 ## 📡 Sources de données
 
@@ -18,7 +23,7 @@ Sous-questions couvertes par le pipeline :
 | APOD | Astronomy Picture of the Day | ✅ Disponible |
 | NeoWs | Objets proches de la Terre | ✅ Disponible |
 | DONKI | Analyses d'éjections de masse coronale (CME) | ✅ Disponible |
-| Mars Rover | Photos des rovers | 🚧 En cours |
+| Mars Rover | Manifests de missions des rovers | ⚠️ Code prêt, API NASA actuellement en panne (404 "No such app") |
 | Meteorites | Données de météorites | 🚧 En cours |
 
 ## ⚙️ Installation
@@ -65,6 +70,17 @@ python -m scripts.clean.clean_apod
 python -m scripts.load.load_apod
 ```
 
+## 🛰️ Pipeline exploration spatiale (séparé)
+
+Pipeline indépendant du pipeline de surveillance ci-dessus : autre point d'entrée (`main_mars.py`), autres scripts (`scripts/mars/`), même base SQLite (`data/nasa.db`, table `mars_missions`) et même clé API.
+
+```bash
+python main_mars.py                         # fetch → clean → load
+python -m scripts.mars.analyze_mars          # évolution des missions (durée, sols, photos) par date de lancement
+```
+
+⚠️ L'API NASA Mars Rover Photos renvoie actuellement une erreur 404 ("No such app") sur `/manifests` et `/photos`, ce qui indique une panne côté infrastructure NASA (backend indisponible), pas un problème dans ce code. Le pipeline se relancera normalement dès que le service sera rétabli.
+
 ## 📊 Analyser les données
 
 Une fois le pipeline exécuté, les scripts du dossier `scripts/analyze/` répondent aux sous-questions de la problématique en agrégeant directement la base SQLite. Ils sont indépendants du pipeline ETL (non appelés par `main.py`) et s'exécutent à la demande :
@@ -88,11 +104,13 @@ nasa-data-pipeline/
 │   ├── processed/        ← données nettoyées
 │   └── analysis/         ← résumés d'analyse
 ├── scripts/
-│   ├── fetch/            ← extraction API
+│   ├── fetch/            ← extraction API (APOD, NeoWs, DONKI)
 │   ├── clean/            ← transformation
 │   ├── load/              ← chargement SQLite
-│   └── analyze/           ← analyse (répond à la problématique, séparé de l'ETL)
-├── main.py               ← lance le pipeline ETL (fetch → clean → load)
+│   ├── analyze/           ← analyse (répond à la problématique surveillance, séparé de l'ETL)
+│   └── mars/              ← pipeline exploration spatiale complet (fetch/clean/load/analyze), séparé du reste
+├── main.py               ← lance le pipeline ETL surveillance (fetch → clean → load)
+├── main_mars.py          ← lance le pipeline ETL exploration spatiale (fetch → clean → load)
 ├── .env.example          ← template clé API
 ├── requirements.txt
 └── README.md
