@@ -1,8 +1,109 @@
-# NASA Data Pipeline
+# Analyse de l'APOD de la NASA (1995 - 2026)
 
-Projet réalisé en binôme dans le cadre du Bachelor IA & Data (Ynov).
+Projet réalisé en binôme dans le cadre du Bachelor IA & Data (Ynov) : collecte des données de l'API NASA, stockage en base SQLite, analyse SQL et restitution dans un dashboard Power BI.
 
-Pipeline ETL en Python qui récupère les données de l'API APOD (Astronomy Picture of the Day) de la NASA, les nettoie et les stocke dans une base SQLite. Les données sont ensuite analysées en SQL et présentées dans un dashboard Power BI.
+## Contexte
+
+Depuis le 16 juin 1995, la NASA publie chaque jour l'**APOD** (Astronomy Picture of the Day) : une image ou une vidéo d'astronomie accompagnée d'une explication. C'est l'un des plus anciens canaux de communication grand public de la NASA.
+
+**Question posée :** comment la NASA communique-t-elle avec le grand public à travers l'APOD depuis 1995 ?
+
+Pour y répondre, nous avons découpé la question en 3 :
+1. La publication est-elle régulière dans le temps ?
+2. Quelle place prend la vidéo par rapport à l'image ?
+3. Les contenus viennent-ils de la NASA ou de photographes extérieurs ?
+
+## Ce qu'il faut retenir
+
+1. **Une régularité totale** : une publication par jour, tous les jours, depuis 1996. Aucun jour manqué en 30 ans.
+2. **L'image reste le format roi** : 96 % d'images, seulement 3,5 % de vidéos.
+3. **La moitié des contenus vient de l'extérieur** : 49 % des photos sont signées par des photographes non-NASA, et cette part a fortement augmenté avec le temps.
+
+## Le dashboard
+
+![Dashboard APOD](docs/dashboard.png)
+
+Il se lit en 4 blocs, de haut en bas.
+
+### 1. Total des publications : 11 246
+
+C'est le volume total de publications entre le 16/06/1995 et le 04/04/2026. Ce chiffre sert de base à tous les pourcentages du dashboard.
+
+### 2. Publications APOD par année
+
+Toutes les barres sont à la même hauteur : **365 publications par an (366 les années bissextiles)** de 1996 à 2025. Les deux barres plus basses ne sont pas des baisses d'activité : 1995 commence en juin, et 2026 s'arrête au 4 avril, date de notre extraction.
+
+**Ce que ça veut dire :** l'APOD est un rendez-vous quotidien fiable. Le public sait qu'il trouvera un nouveau contenu chaque jour, et c'est la base de la fidélité de l'audience.
+
+### 3. Répartition images / vidéos
+
+- Images : 10 828 (96,3 %)
+- Vidéos : 393 (3,5 %)
+- Autres : 25 (0,2 %)
+
+**Ce que ça veut dire :** l'APOD reste avant tout un format photo. En regardant par année, la vidéo n'apparaît vraiment qu'en **2011**, atteint un pic à **10 % en 2021**, puis redescend autour de 6 %. Elle reste donc un format secondaire.
+
+### 4. Origine des photos : NASA / Externe
+
+- NASA : 5 713 (50,8 %)
+- Externe : 5 533 (49,2 %)
+
+**Ce que ça veut dire :** l'APOD ne montre pas seulement les images de la NASA. Une photo sur deux vient d'astronomes amateurs ou indépendants. Et la tendance est nette quand on regarde par année :
+
+| Période | Part de photos externes |
+|---------|------------------------|
+| 1995 - 2000 | entre 12 et 24 % |
+| 2001 - 2006 | entre 27 et 48 % |
+| 2007 - 2026 | entre 51 et 68 %, environ 60 % en moyenne |
+
+L'APOD est passé d'une vitrine des images NASA à une **plateforme qui met en avant la communauté** des astronomes.
+
+## Conclusion et recommandations
+
+La NASA utilise l'APOD comme un **rendez-vous quotidien, très régulier, centré sur l'image et de plus en plus ouvert aux contributeurs extérieurs**.
+
+Si on devait conseiller l'équipe communication :
+- **Garder le rythme quotidien** : c'est le point fort du format, il n'a jamais été interrompu.
+- **Tester davantage la vidéo** : elle représente moins de 10 % des contenus alors que c'est le format dominant sur les réseaux sociaux aujourd'hui.
+- **Continuer à valoriser la communauté** : les photographes externes fournissent plus de la moitié des contenus, c'est un atout (contenu varié, public impliqué).
+
+## Méthode
+
+```
+API NASA  →  Python (extraction, nettoyage)  →  SQLite  →  SQL (analyse)  →  Power BI (dashboard)
+```
+
+**1. Collecte et stockage** : un pipeline ETL en Python récupère les données de l'API APOD année par année, les nettoie et les charge dans une base SQLite (`data/nasa.db`, table `apod`).
+
+**2. Analyse SQL** : les indicateurs ont d'abord été calculés en SQL (`analysis/queries.sql`).
+
+| Indicateur | Requête |
+|------------|---------|
+| Total des publications | `select count(*) from apod;` |
+| Images / vidéos | `select media_type, count(*) from apod group by media_type;` |
+| Photos externes | `select count(*) from apod where copyright != 'nasa';` |
+| Publications par année | `select substr(date, 1, 4), count(*) from apod group by substr(date, 1, 4);` |
+
+**3. Dashboard Power BI** : la table a été exportée en CSV puis chargée dans Power BI. Dans Power Query, nous avons ajouté :
+- une colonne `Année`, extraite de la date
+- une colonne conditionnelle `source photo` : `NASA` si `copyright` vaut `nasa` ou `NASA`, sinon `EXTERNE`
+
+Les chiffres de Power BI ont été comparés à ceux du SQL pour vérifier qu'ils correspondent. Cela nous a permis de repérer une erreur : par défaut, Power BI faisait la **somme** des `id` au lieu de les **compter**, ce qui donnait 63 millions de publications et 5,3 % de vidéos au lieu de 11 246 et 3,5 %.
+
+## Limites
+
+- **Le périmètre** : l'APOD montre comment la NASA communique, pas ce qu'elle fait. Ces données ne permettent pas d'analyser les missions spatiales elles-mêmes.
+- **Pas de données d'audience** : on ne sait pas combien de personnes voient chaque publication. On analyse l'offre de contenu, pas son succès.
+- **Qualité des données** :
+  - la colonne `copyright` contient à la fois `nasa` et `NASA` (5 lignes). C'est corrigé dans Power BI, mais pas encore dans le script de nettoyage. C'est pour ça que le SQL donne 5 538 photos externes et Power BI 5 533.
+  - 184 titres contiennent un retour à la ligne suivi de "Credit:", hérité de l'API.
+
+## Prochaines étapes
+
+- Ajouter au dashboard l'évolution par année de la part vidéo et de la part externe
+- Corriger le nettoyage de `copyright` et des titres dans le pipeline
+- Intégrer les autres sources NASA déjà collectées sur la branche `dev` (NeoWs, DONKI, Mars Rover)
+- Analyser les mots les plus fréquents dans les titres (Mars, Hubble, JWST...) pour voir quelles missions ressortent selon les années
 
 ## Équipe
 
@@ -11,44 +112,20 @@ Pipeline ETL en Python qui récupère les données de l'API APOD (Astronomy Pict
 | [HOUDAED](https://github.com/HOUDAED) | Pipeline ETL : extraction API, nettoyage, chargement SQLite, Docker, pipelines NeoWs / DONKI / Mars Rover (branche `dev`) |
 | [krm3z](https://github.com/krm3z) | Analyse : requêtes SQL, dashboard Power BI, contrôle qualité des données, documentation |
 
-## Problématique
+## Utilisation de l'IA
 
-Comment la NASA communique-t-elle avec le grand public à travers l'APOD depuis 1995 ?
+Nous avons utilisé un assistant IA pendant le projet, comme un mentor plutôt que comme un générateur de code :
 
-Pour y répondre, nous nous sommes concentrés sur 3 questions :
-- Est-ce que la publication est régulière dans le temps ?
-- Quelle place prennent les vidéos par rapport aux images ?
-- Les photos publiées viennent-elles de la NASA ou de photographes extérieurs ?
+- **SQL** : les requêtes ont été écrites à la main, l'IA les corrigeait en expliquant l'erreur (virgule oubliée entre deux colonnes, `GROUP BY` manquant, `SELECT *` au lieu de `COUNT(*)`).
+- **Power BI** : guidage étape par étape, notamment pour repérer que Power BI additionnait les `id` au lieu de les compter.
+- **Pipeline** : aide ponctuelle sur la structure du projet et le pipeline Mars Rover.
+- **Analyse et documentation** : aide pour vérifier les tendances par année et rédiger ce README.
 
-## Données
+Chaque chiffre a été vérifié en relançant les requêtes SQL et en le comparant à Power BI. Chacun peut expliquer la partie qu'il a réalisée.
 
-| Source | Description | Statut |
-|--------|-------------|--------|
-| APOD | Une image ou vidéo d'astronomie publiée chaque jour depuis le 16/06/1995 | Pipeline + analyse |
-| NeoWs | Objets proches de la Terre | Pipeline en cours (branche `dev`) |
-| DONKI | Événements de météo spatiale | Pipeline en cours (branche `dev`) |
-| Mars Rover | Photos des rovers martiens | Pipeline en cours (branche `dev`) |
+## Lancer le projet
 
-Les données APOD vont du 16/06/1995 au 04/04/2026, soit 11 246 publications.
-
-Table `apod` :
-
-| Colonne | Description |
-|---------|-------------|
-| id | identifiant |
-| date | date de publication |
-| title | titre |
-| media_type | image, video ou other |
-| url | lien vers le média |
-| copyright | auteur de la photo (`nasa` si pas d'auteur indiqué) |
-
-## Pipeline
-
-1. **Extract** (`scripts/fetch/fetch_apod.py`) : appel de l'API APOD année par année, sauvegarde du JSON brut dans `data/raw/`
-2. **Transform** (`scripts/clean/clean_apod.py`) : sélection des colonnes utiles, valeurs manquantes, sauvegarde dans `data/processed/`
-3. **Load** (`scripts/load/load_apod.py`) : insertion dans la base SQLite `data/nasa.db`
-
-## Installation
+**Installation**
 
 ```bash
 git clone https://github.com/krm3z/nasa-data-pipeline.git
@@ -56,135 +133,55 @@ cd nasa-data-pipeline
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
-
-Clé API : en créer une gratuitement sur https://api.nasa.gov, puis :
-
-```bash
 cp .env.example .env
 ```
 
-et mettre la clé dans `.env`.
+Mettre ensuite une clé API NASA (gratuite sur https://api.nasa.gov) dans `.env`.
 
-## Lancer le pipeline
-
-Tout d'un coup :
+**Pipeline**
 
 ```bash
 python main.py
 ```
 
-Ou étape par étape :
-
-```bash
-python -m scripts.fetch.fetch_apod
-python -m scripts.clean.clean_apod
-python -m scripts.load.load_apod
-```
-
-Avec Docker :
+ou avec Docker :
 
 ```bash
 docker build -t nasa-pipeline .
 docker run --env-file .env nasa-pipeline
 ```
 
-## Analyse SQL
-
-Les requêtes sont dans `analysis/queries.sql`. Pour les lancer :
+**Analyse SQL**
 
 ```bash
 sqlite3 data/nasa.db < analysis/queries.sql
 ```
 
-## Dashboard Power BI
+**Dashboard** : ouvrir `powerbi/apod_dashboard.pbix` avec Power BI Desktop.
 
-![Dashboard](docs/dashboard.png)
-
-Le fichier du dashboard est dans `powerbi/apod_dashboard.pbix` (à ouvrir avec Power BI Desktop).
-
-**Préparation des données**
-
-Power BI ne lit pas SQLite directement, donc la table `apod` a été exportée en CSV :
-
-```bash
-sqlite3 -header -csv data/nasa.db "select * from apod;" > apod.csv
-```
-
-Dans Power Query, nous avons ajouté deux colonnes :
-- `Année`, extraite de la date
-- `source photo`, une colonne conditionnelle : `NASA` si `copyright` vaut `nasa` ou `NASA`, sinon `EXTERNE`. Elle corrige au passage l'incohérence de casse dans les données.
-
-**Visuels**
-
-| Visuel | Ce qu'il montre | Équivalent SQL |
-|--------|-----------------|----------------|
-| Carte "Total des publications" | 11 246 publications | `count(*)` |
-| Histogramme par année | une publication par jour depuis 1996 | `group by` sur l'année |
-| Anneau images / vidéos | 96 % d'images, 3,5 % de vidéos | `group by media_type` |
-| Anneau NASA / Externe | 50,8 % NASA, 49,2 % externe | colonne conditionnelle (`case when`) |
-
-Point d'attention rencontré : par défaut, Power BI faisait la **somme** des `id` au lieu de les **compter**, ce qui donnait des chiffres faux (63 millions au lieu de 11 246, et 5,3 % de vidéos au lieu de 3,5 %). La colonne `id` a été passée en "Ne pas résumer" pour éviter l'erreur.
-
-## Résultats
-
-- **11 246 publications** entre juin 1995 et avril 2026.
-- **Une publication par jour sans interruption** depuis 1996 (365 ou 366 par an). 1995 et 2026 sont incomplètes car les données commencent en juin 1995 et s'arrêtent en avril 2026.
-- **96 % d'images** (10 828) contre **3,5 % de vidéos** (393). L'APOD reste surtout un format photo.
-- **Environ la moitié des photos viennent de photographes extérieurs** à la NASA (5 533, soit 49 %). L'APOD sert aussi de vitrine aux astronomes amateurs et indépendants.
-
-En résumé, la NASA utilise l'APOD comme un rendez-vous quotidien très régulier, basé sur l'image, et ouvert aux contributions extérieures.
-
-## Limites
-
-- L'APOD ne parle pas directement des missions spatiales, donc ces données seules ne permettent pas d'analyser l'exploration spatiale en elle-même.
-- La colonne `copyright` contient à la fois `nasa` et `NASA` (5 lignes). C'est corrigé dans Power BI mais pas encore dans le script de nettoyage.
-- 184 titres contiennent un retour à la ligne suivi de "Credit:", ce qui vient de l'API. Le nettoyage des titres est à améliorer.
-- Les autres sources (NeoWs, DONKI, Mars Rover) ne sont pas encore fusionnées sur `main` ni analysées.
-
-## Utilisation de l'IA
-
-Nous avons utilisé un assistant IA pendant le projet, comme un mentor plutôt que comme un générateur de code :
-
-- **SQL** : les requêtes ont été écrites à la main, l'IA les corrigeait en m'expliquant l'erreur (virgule oubliée entre deux colonnes, `GROUP BY` manquant, `SELECT *` au lieu de `COUNT(*)`).
-- **Power BI** : guidage étape par étape, notamment pour repérer que Power BI additionnait les `id` (Somme) au lieu de les compter (Nombre), ce qui faussait les pourcentages.
-- **Pipeline** : aide ponctuelle sur la structure du projet et la mise en place du pipeline Mars Rover.
-- **Qualité des données** : en vérifiant les résultats, nous avons repéré l'incohérence `nasa` / `NASA` et les titres contenant "Credit:".
-- **Débogage et documentation** : aide sur Git, le `.gitignore` et la rédaction de ce README.
-
-Chaque résultat a été vérifié en relançant les requêtes SQL et en comparant avec les chiffres de Power BI. L'intérêt de l'IA pour nous : aller plus vite tout en comprenant ce qu'on fait. Chacun peut expliquer la partie qu'il a réalisée, ligne par ligne.
-
-## Prochaines étapes
-
-- Corriger le nettoyage de `copyright` et des titres
-- Ajouter NeoWs et Mars Rover
-- Analyser les mots les plus fréquents dans les titres (Mars, Hubble, JWST...) pour voir quelles missions ressortent selon les années
-
-## Stack
-
-Python, requests, python-dotenv, SQLite, SQL, Power BI, Docker
-
-## Structure
+## Structure du projet
 
 ```
 nasa-data-pipeline/
 ├── analysis/
-│   └── queries.sql
+│   └── queries.sql        requêtes d'analyse
 ├── config/
-│   └── config.py
-├── data/            (non versionné)
-│   ├── raw/
-│   └── processed/
+│   └── config.py          paramètres (années, chemins)
+├── data/                  non versionné
+│   ├── raw/               JSON brut de l'API
+│   └── processed/         JSON nettoyé
 ├── docs/
-│   └── dashboard.png
+│   └── dashboard.png      capture du dashboard
 ├── powerbi/
 │   └── apod_dashboard.pbix
 ├── scripts/
-│   ├── fetch/
-│   ├── clean/
-│   └── load/
+│   ├── fetch/             extraction API
+│   ├── clean/             nettoyage
+│   └── load/              chargement SQLite
 ├── Dockerfile
-├── main.py
+├── main.py                lance tout le pipeline
 ├── requirements.txt
 └── .env.example
 ```
+
+**Stack :** Python, requests, python-dotenv, SQLite, SQL, Power BI, Docker
